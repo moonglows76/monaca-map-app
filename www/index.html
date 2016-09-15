@@ -1,0 +1,99 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <script src="components/loader.js"></script>
+    <link rel="stylesheet" href="components/loader.css">
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://maps.googleapis.com/maps/api/js?libraries=places&sensor=true"></script>
+    <script>
+        var map = null;            // 地図オブジェクト 
+        var infoWindow = null;      //吹き出し用
+
+        $(function(){
+            // // 東京駅の緯度経度を元に LatLng オブジェクトを作成する
+            // var latlng = new google.maps.LatLng(35.681382,139.766084);
+            // createMap(latlng); 
+            $(document).on("deviceready", function(){
+                $("#search").click(function(){
+                    onDeviceReady();
+                });
+            });
+        });
+
+        function onDeviceReady() {
+            // GPS センサーにアクセスして現在位置情報を取得する
+            navigator.geolocation.getCurrentPosition(onSuccess, onError);
+        }
+
+        // 現在地の取得に成功した場合に呼び出される関数
+        function onSuccess(position){
+            // position に含まれる緯度経度情報を取得
+            var latitude = position.coords.latitude;
+            var longitude = position.coords.longitude;
+            console.log("緯度: " + latitude);
+            console.log("経度: " + longitude);
+            // 緯度経度情報を元にLatLng オブジェクトを作成
+            var latlng = new google.maps.LatLng(latitude, longitude);
+            createMap(latlng);
+        }
+        // 現在地の取得に失敗した場合に呼び出される関数
+        function onError(error){
+            alert(error.message);
+        }
+
+        function createMap(latlng) {
+            var mapOption = { 
+                 zoom: 14,       // ズームレベル 
+                 center: latlng, // 指定した場所を地図のセンターにする  
+                mapTypeId: google.maps.MapTypeId.ROADMAP  // 地図のタイプ 
+            };
+
+            map = new google.maps.Map($("#map_canvas").get(0), mapOption);
+
+            var marker = new google.maps.Marker({ position: latlng, map: map });
+            getPlaceInfo(latlng);
+        }
+        
+        function getPlaceInfo(latlng){
+            infoWindow = new google.maps.InfoWindow();
+            var request = {
+                location:latlng,
+                radius: $("#radius").val(),
+                keyword: $("#keyword").val()
+            };
+            var service = new google.maps.places.PlacesService(map);
+            service.search(request, infoCallback);
+        }
+        
+        function infoCallback(results, status){
+            if(status == google.maps.places.PlacesServiceStatus.OK){
+                for(var i=0; i<results.length; i++){
+                    var place = results[i];
+                    createMarker(place);
+                }                
+            }
+        }
+        
+        function createMarker(place){
+            var markerOption = {
+                position: place.geometry.location,
+                map: map,
+                icon: place.icon
+            };
+            var marker = new google.maps.Marker(markerOption);
+
+            google.maps.event.addListener(marker, "click", function(){
+                var info = place.name + "<br>" + place.vicinity + "<br>" + place.rating;
+                infoWindow.setContent(info);
+                infoWindow.open(map, marker);
+            });
+        }
+    </script>
+</head>
+<body>
+    <input type="text" id="keyword"><input type="text" id="radius"> <input type="button" value="検索" id="search">
+    <div id="map_canvas"></div>
+</body>
+</html>
